@@ -1,0 +1,49 @@
+data:
+  dataset: refcoco
+  train:
+    lmdb_path: datasets/lmdb/refcoco/train.lmdb
+    mode: train
+    image_size:
+      - 480
+      - 640
+  val:
+    lmdb_path: datasets/lmdb/refcoco/val.lmdb
+    mode: val
+    image_size:
+      - 480
+      - 640
+
+  test:
+    lmdb_path: datasets/lmdb/refcoco/test.lmdb
+    mode: test
+    image_size:
+      - 480
+      - 640
+
+train_settings:
+  batch_size: 30
+  start_epoch: 0
+  epochs: 50
+  base_lr: 0.0001
+  lr_decay: 0.1
+  milestones: [35, 45]
+
+optimizer_params:
+  lr: 0.0001
+  weight_decay: 0.01
+
+
+model:
+  text_backbone: bert-base-uncased
+  visual_backbone: facebook/maskformer-swin-large-coco
+  VITEncoder:
+    image_size:
+      - 480
+      - 640
+    segment_size: 50
+    embedding_size: 1024 
+    hidden_size: 1024
+    blocks_num: 15
+    num_heads: 6
+    dropout: 0.3 
+    bias: true
