@@ -252,7 +252,7 @@ class REFER:
 		ax.imshow(I)
 		# show refer expression
 		for sid, sent in enumerate(ref['sentences']):
-			print(f'{sid+1}. {sent['sent']}')
+			print(f'{sid+1}. {sent["sent"]}')
 		# show segmentations
 		if seg_box == 'seg':
 			ann_id = ref['ann_id']
