@@ -41,8 +41,8 @@ model:
       - 480
       - 640
     segment_size: 50
-    embedding_size: 1000
-    hidden_size: 768
+    embedding_size: 700
+    hidden_size: 700
     blocks_num: 8
     num_heads: 5
     dropout: 0.3 
