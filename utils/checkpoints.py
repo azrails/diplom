@@ -41,6 +41,7 @@ def load_checkpoint(path_to_checkpoints_folder, checkpoint_name, device):
     model_state = torch.load(path_to_model)
     model = StageOneEncoder(**conf['model']['VITEncoder'])
     model.load_state_dict(model_state['model_state_dict'])
+    model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), **conf['optimizer_params'])
     optimizer.load_state_dict(model_state['optimizer_state_dict'])
