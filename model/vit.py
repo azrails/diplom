@@ -9,7 +9,7 @@ class PatchImageEmbedding(nn.Module):
     """
     def __init__(self, image_size: tuple[int, int], segment_size: int, hidden_size: int, channels_size: int):
         super().__init__()
-        self.num_embeddings = ((image_size[0] // segment_size) + (image_size[1] // segment_size))
+        self.num_embeddings = ((image_size[0] // segment_size) * (image_size[1] // segment_size))
         self.embeder = nn.Conv2d(channels_size, hidden_size, stride=segment_size, kernel_size=segment_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -35,7 +35,7 @@ class ImageEmbedding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         #[batch_size, channels_size, image_hight, image_width] -> [batch_size, num_of_embeddings + 1, hidden_size]
         x = self.image_embedding(x)
-        bs = x.size[0]
+        bs = x.size()[0]
         sos = self.sos.expand(bs, -1, -1)
         # cat start of sequence token to embeddings
         x = torch.cat((sos, x), dim=1)
@@ -55,22 +55,20 @@ class MultiHeadAttentionLayer(nn.Module):
             self, 
             input_size: int,  
             num_heads:int = 1, 
-            head_size: int = None, 
             dropout:float = 0.2, 
-            bias:bool=True,
             ):
         super().__init__()
-        if head_size is None:
-            self.head_size = input_size // num_heads
+        assert input_size % num_heads == 0
+        self.head_size = input_size // num_heads
         self.input_size = input_size
         self.num_heads = num_heads
 
 
-        self.q_mat = nn.Linear(self.input_size, self.num_heads * self.head_size, bias=bias)
-        self.k_mat = nn.Linear(self.input_size, self.num_heads * self.head_size, bias=bias)
-        self.v_mat = nn.Linear(self.input_size, self.num_heads * self.head_size, bias=bias)
+        self.q_mat = nn.Linear(self.input_size, self.input_size)
+        self.k_mat = nn.Linear(self.input_size, self.input_size)
+        self.v_mat = nn.Linear(self.input_size, self.input_size)
 
-        self.multi_head_mat = nn.Linear(self.num_heads * self.input_size, self.input_size)
+        self.multi_head_mat = nn.Linear(self.input_size, self.input_size)
     
         self.dropout = nn.Dropout(p=dropout)
 
@@ -155,10 +153,9 @@ class Transformer(nn.Module):
             hidden_size: int, 
             num_heads: int=1, 
             dropout: float=0.2, 
-            bias: bool=True,
         ):
         super().__init__()
-        self.attention = MultiHeadAttentionLayer(input_size, num_heads, dropout=dropout, bias=bias)
+        self.attention = MultiHeadAttentionLayer(input_size, num_heads, dropout=dropout)
         self.mlp = MLPLayer(input_size, hidden_size, dropout)
         self.norm_1 = nn.LayerNorm(input_size)
         self.norm_2 = nn.LayerNorm(input_size)
@@ -167,6 +164,7 @@ class Transformer(nn.Module):
     def forward(self, x: torch.Tensor, attention_mask: None|torch.Tensor = None):
         attended_x = self.norm_1(x)
         attended_x, attention_probs = self.attention(attended_x, attended_x, attended_x, attention_mask)
+        attention_probs = None
         x = x + attended_x
         mlp_x = self.mlp(self.norm_2(x))
         x = x + mlp_x
@@ -181,13 +179,12 @@ class Encoder(nn.Module):
             blocks_num: int,
             num_heads: int=1, 
             dropout: float=0.2, 
-            bias: bool=True,
         ):
         super().__init__()
         self.blocks = nn.ModuleList([])
         for _ in range(blocks_num):
             self.blocks.append(
-                Transformer(input_size, hidden_size, num_heads, dropout, bias)
+                Transformer(input_size, hidden_size, num_heads, dropout)
             )
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
@@ -212,7 +209,7 @@ class StageOneEncoder(nn.Module):
         ):
         super().__init__()
         self.embedder = ImageEmbedding(image_size, segment_size, embedding_size, 3, dropout)
-        self.encoder = Encoder(embedding_size, hidden_size, blocks_num, num_heads, dropout, bias)
+        self.encoder = Encoder(embedding_size, hidden_size, blocks_num, num_heads, dropout)
         self.image_embedding = nn.Linear(embedding_size, 768, bias)
     
     def forward(self, x):

@@ -1,7 +1,7 @@
 import os
 import json
 import torch
-import config
+from utils import config
 from model.vit import StageOneEncoder
 
 def save_checkpoint(path_to_checkpoints_folder, checkpoint_name, config, model, optimizer, scheduler, train_losses, val_scores):

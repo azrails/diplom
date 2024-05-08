@@ -41,9 +41,9 @@ model:
       - 480
       - 640
     segment_size: 50
-    embedding_size: 1024 
+    embedding_size: 1000
     hidden_size: 1024
     blocks_num: 15
-    num_heads: 6
+    num_heads: 5
     dropout: 0.3 
     bias: true

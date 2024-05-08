@@ -96,7 +96,7 @@ class ReferenceDataset(Dataset):
             train_mask = self.extract_segment(tensor_img, tensor_mask)
             negative_train_mask = self.extract_segment(tensor_img, tensor_mask, True)
             sentence, attention_mask = self.tokenizer.tokenize(sent)
-            return tensor_img, train_mask, negative_train_mask, sentence, attention_mask
+            return tensor_img, train_mask, negative_train_mask, sentence.squeeze(), attention_mask.squeeze()
 
         #block used inly in test
         params = DataParams(mat_inv, img, mask, img_size, data['sents'])
