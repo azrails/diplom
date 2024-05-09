@@ -38,7 +38,7 @@ def load_checkpoint(path_to_checkpoints_folder, checkpoint_name, device):
     val_scores = data['val_scores']
 
     path_to_model = os.path.join(path_to_data, 'model.pt')
-    model_state = torch.load(path_to_model)
+    model_state = torch.load(path_to_model, map_location=device)
     model = StageOneEncoder(**conf['model']['VITEncoder'])
     model.load_state_dict(model_state['model_state_dict'])
     model = model.to(device)
