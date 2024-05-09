@@ -50,7 +50,7 @@ class ReferenceDataset(Dataset):
             #initialize db connection
             self.__init_db()
         #addition for negative sampling            
-        negative_idx = np.random.choise(self.length)
+        negative_idx = np.random.choice(self.length)
         with self.db_connection.begin(write=False) as txn:
             data = txn.get(self.keys[index])
             negative_data = txn.get(self.keys[negative_idx])
@@ -87,7 +87,7 @@ class ReferenceDataset(Dataset):
         negative_tensor_img = self.convert_to_tensor(negative_transformed_img)
         negative_tensor_mask = self.convert_to_tensor(negative_transformed_mask , mask=True)
         
-        #for normal img
+        #NORMAL IMG
         data = loads_data(data)
         #chose sentence
         sent_idx = np.random.choice(data['num_sents'])
