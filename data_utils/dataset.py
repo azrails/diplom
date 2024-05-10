@@ -49,8 +49,10 @@ class ReferenceDataset(Dataset):
         if self.db_connection is None:
             #initialize db connection
             self.__init_db()
-        #addition for negative sampling            
-        negative_idx = np.random.choice(self.length)
+        #addition for negative sampling
+        negative_idx = index
+        while negative_idx == index:            
+            negative_idx = np.random.choice(self.length)
         with self.db_connection.begin(write=False) as txn:
             data = txn.get(self.keys[index])
             negative_data = txn.get(self.keys[negative_idx])
