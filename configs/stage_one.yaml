@@ -26,7 +26,7 @@ train_settings:
   epochs: 50
   base_lr: 0.0001
   lr_decay: 0.1
-  milestones: [35, 45]
+  milestones: [30, 45]
 
 optimizer_params:
   lr: 0.0001
