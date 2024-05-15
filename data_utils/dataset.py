@@ -10,13 +10,11 @@ from .folder_to_lmdb import loads_data
 DataParams = namedtuple("DataParams", ['inv_mat', 'img', 'mask', 'img_size', 'sents'])
 
 class ReferenceDataset(Dataset):
-    def __init__(self, lmdb_path, mode, image_size, tokenizer):
+    def __init__(self, lmdb_path, mode, image_size):
         self.lmdb_path = lmdb_path
         self.mode = mode
         self.input_size = image_size
         self.db_connection = None
-        self.tokenizer = tokenizer
-
         self.__load_meta()
 
     def __load_meta(self):
@@ -49,46 +47,9 @@ class ReferenceDataset(Dataset):
         if self.db_connection is None:
             #initialize db connection
             self.__init_db()
-        #addition for negative sampling
-        negative_idx = index
-        while negative_idx == index:            
-            negative_idx = np.random.choice(self.length)
+        
         with self.db_connection.begin(write=False) as txn:
             data = txn.get(self.keys[index])
-            negative_data = txn.get(self.keys[negative_idx])
-        negative_data = loads_data(negative_data)
-        negative_img = cv2.imdecode(
-            np.frombuffer(negative_data['img'], np.uint8),
-            cv2.IMREAD_COLOR
-        )
-        negative_img = cv2.cvtColor(negative_img, cv2.COLOR_BGR2RGB)
-        negative_mask = cv2.imdecode(
-            np.frombuffer(negative_data['mask'], np.uint8),
-            cv2.IMREAD_GRAYSCALE
-        )
-        negative_img_size = negative_img.shape[:2]
-        #downscale matrix
-        mat, mat_inv = self.get_transform_mat(negative_img_size, True)
-
-        #img and mask transofrms
-        #Помнить что тут перестановка размеров т.к входное (480, 640)
-        negative_transformed_mask = cv2.warpAffine(
-            negative_mask,
-            mat,
-            dsize=self.input_size[::-1],
-            flags=cv2.INTER_LINEAR,
-            borderValue=0.
-        )
-        negative_transformed_img = cv2.warpAffine(
-            negative_img,
-            mat,
-            dsize=self.input_size[::-1],
-            flags=cv2.INTER_CUBIC,
-            borderValue=[0.48145466 * 255, 0.4578275 * 255, 0.40821073 * 255]
-        )
-        negative_tensor_img = self.convert_to_tensor(negative_transformed_img)
-        negative_tensor_mask = self.convert_to_tensor(negative_transformed_mask , mask=True)
-        
         #NORMAL IMG
         data = loads_data(data)
         #chose sentence
@@ -131,9 +92,7 @@ class ReferenceDataset(Dataset):
         tensor_mask = self.convert_to_tensor(transformed_mask, mask=True)
         if self.mode == "train" or self.mode == "val":
             train_mask = self.extract_segment(tensor_img, tensor_mask)
-            negative_train_mask = self.extract_segment(negative_tensor_img, negative_tensor_mask, True)
-            sentence, attention_mask = self.tokenizer.tokenize(sent)
-            return tensor_img, train_mask, negative_train_mask, sentence.squeeze(), attention_mask.squeeze()
+            return tensor_img, train_mask, sent
 
         #block used inly in test
         params = DataParams(mat_inv, img, mask, img_size, data['sents'])

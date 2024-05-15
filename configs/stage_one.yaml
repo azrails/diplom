@@ -34,7 +34,7 @@ optimizer_params:
 
 
 model:
-  text_backbone: bert-base-uncased
+  text_backbone: "sentence-transformers/all-mpnet-base-v2"
   visual_backbone: facebook/maskformer-swin-large-coco
   VITEncoder:
     image_size:
@@ -43,7 +43,7 @@ model:
     segment_size: 50
     embedding_size: 700
     hidden_size: 700
-    blocks_num: 8
+    blocks_num: 10
     num_heads: 5
     dropout: 0.3 
     bias: true

@@ -1,26 +1,25 @@
 import torch
-from transformers import BertTokenizer
+from transformers import AutoTokenizer
 
 class Tokenizer:
     """
     Tokenizer wrapper, incapsulated parameters and transforms to uses device
     """
-    def __init__(self, bert_tokenizer):
-        self.tokenizer = bert_tokenizer
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
     
     def tokenize(self, input_seq) -> tuple[torch.Tensor, torch.Tensor]:
         results = self.tokenizer(
-            input_seq, 
-            truncation=True, 
+            input_seq,
+            truncation=True,
             return_tensors='pt', 
-            add_special_tokens=True,
-            padding='max_length'
+            padding=True
             )
         return (results['input_ids'], results['attention_mask'])
 
-def get_bert_tokenizer(model_name: str) -> Tokenizer:
+def get_auto_tokenizer(model_name: str) -> Tokenizer:
     """
     Download Bert tokenizer from hugFace for model and returns Tokenizer
     """
-    tokenizer = BertTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     return Tokenizer(tokenizer)
