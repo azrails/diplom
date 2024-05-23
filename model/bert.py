@@ -26,5 +26,5 @@ class TextEmbedding(nn.Module):
         res = self.bert_model(input_seq, attention_mask=attention_mask)
         if self.pool is True:
             res = self.mean_pooling(res, attention_mask=attention_mask)
-            return self.normalize(res, p=2, dim=1)
+            return res
         return res

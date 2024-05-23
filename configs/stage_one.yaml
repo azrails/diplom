@@ -4,46 +4,85 @@ data:
     lmdb_path: datasets/lmdb/refcoco/train.lmdb
     mode: train
     image_size:
-      - 480
-      - 640
+      - 224
+      - 224
+    contrastive: true
   val:
     lmdb_path: datasets/lmdb/refcoco/val.lmdb
     mode: val
     image_size:
-      - 480
-      - 640
-
+      - 224
+      - 224
+    contrastive: true
   test:
     lmdb_path: datasets/lmdb/refcoco/test.lmdb
     mode: test
     image_size:
-      - 480
-      - 640
-
+      - 224
+      - 224
+    contrastive: true
+  val_plus:
+    lmdb_path: datasets/lmdb/refcoco+/val.lmdb
+    mode: val
+    image_size:
+      - 224
+      - 224
+    contrastive: true
+  train_plus:
+    lmdb_path: datasets/lmdb/refcoco+/train.lmdb
+    mode: train
+    image_size:
+      - 224
+      - 224
+    contrastive: true
 train_settings:
-  batch_size: 30
+  batch_size: 56
   start_epoch: 0
-  epochs: 50
+  epochs: 300
   base_lr: 0.0001
   lr_decay: 0.1
-  milestones: [30, 45]
+  milestones: [60, 150, 250]
+  clip_grad: 2
 
 optimizer_params:
   lr: 0.0001
-  weight_decay: 0.01
+  weight_decay: 0.0001
 
 
 model:
-  text_backbone: "sentence-transformers/all-mpnet-base-v2"
-  visual_backbone: facebook/maskformer-swin-large-coco
-  VITEncoder:
+  # text_backbone: "sentence-transformers/multi-qa-distilbert-cos-v1"
+  # visual_backbone: facebook/maskformer-swin-large-coco
+
+  ImageEncoder:
     image_size:
-      - 480
-      - 640
-    segment_size: 50
-    embedding_size: 700
-    hidden_size: 700
-    blocks_num: 10
-    num_heads: 5
-    dropout: 0.3 
-    bias: true
+      - 224
+      - 224
+    embedding_dim: 300
+    embedding_dim_internal: 300
+    conv_kernel_size: 7
+    conv_num_layers: 2
+
+  TextEncoder:
+    seq_len: 150
+    embedding_dim: 300
+    embedding_dim_internal: 300
+    mlp_ratio: 2
+    num_heads: 4
+    num_blocks: 3
+    projection_dropout: 0.1
+
+  TextConvEncoder:
+    seq_len: 150
+    embedding_dim: 300
+    embedding_dim_internal: 300
+
+  SiamEncoder:
+    embedding_dim: 300
+    mlp_ratio: 4
+    num_heads: 6
+    num_blocks: 12
+    projection_dropout: 0.1
+
+  LearnMetric:
+    embedding_dim: 300
+    mlp_ratio: 3

@@ -10,12 +10,19 @@ from .folder_to_lmdb import loads_data
 DataParams = namedtuple("DataParams", ['inv_mat', 'img', 'mask', 'img_size', 'sents'])
 
 class ReferenceDataset(Dataset):
-    def __init__(self, lmdb_path, mode, image_size):
+    def __init__(self, lmdb_path, mode, image_size, contrastive=False, contrastive_prob=0.5, with_img=False):
         self.lmdb_path = lmdb_path
         self.mode = mode
         self.input_size = image_size
         self.db_connection = None
         self.__load_meta()
+        self.contrastive = contrastive
+        self.with_img = with_img
+        self.contrastive_prob = contrastive_prob
+        self.mean = torch.tensor([0.48145466, 0.4578275,
+                                  0.40821073]).reshape(3, 1, 1)
+        self.std = torch.tensor([0.26862954, 0.26130258,
+                                 0.27577711]).reshape(3, 1, 1)
 
     def __load_meta(self):
         self.__init_db()
@@ -43,14 +50,10 @@ class ReferenceDataset(Dataset):
         return self.length
     
 
-    def __getitem__(self, index):
-        if self.db_connection is None:
-            #initialize db connection
-            self.__init_db()
-        
+    def extract_data(self, index):
         with self.db_connection.begin(write=False) as txn:
             data = txn.get(self.keys[index])
-        #NORMAL IMG
+        
         data = loads_data(data)
         #chose sentence
         sent_idx = np.random.choice(data['num_sents'])
@@ -90,13 +93,45 @@ class ReferenceDataset(Dataset):
         )
         tensor_img = self.convert_to_tensor(transformed_img)
         tensor_mask = self.convert_to_tensor(transformed_mask, mask=True)
+        return tensor_img, tensor_mask, sent
+
+
+    def __getitem__(self, index):
+        if self.db_connection is None:
+            #initialize db connection
+            self.__init_db()
+
+        is_contrastive = False
+        tensor_img, tensor_mask, sent = self.extract_data(index)
+        if self.contrastive is True:
+            is_contrastive = np.random.random() > self.contrastive_prob
+            if is_contrastive:
+                neg_idx = index
+                while neg_idx == index:
+                    neg_idx = np.random.choice(self.length)
+                negative_tensor_img, negative_tensor_mask, negative_sent = self.extract_data(neg_idx) 
+                choise = np.random.choice(2)
+                if choise == 0:
+                    sent = negative_sent
+                else:
+                    tensor_img = negative_tensor_img
+                    tensor_mask = negative_tensor_mask
+
         if self.mode == "train" or self.mode == "val":
             train_mask = self.extract_segment(tensor_img, tensor_mask)
+            if self.contrastive:
+                if self.with_img is False:
+                    return train_mask, sent, int(not is_contrastive)
+                return tensor_img, train_mask, sent, int(not is_contrastive)
+
+            if self.with_img is False:
+                return train_mask, sent
             return tensor_img, train_mask, sent
 
+
         #block used inly in test
-        params = DataParams(mat_inv, img, mask, img_size, data['sents'])
-        return tensor_img, tensor_mask, params
+        # params = DataParams(mat_inv, img, mask, img_size, data['sents'])
+        # return tensor_img, tensor_mask, params
 
     @staticmethod
     def extract_segment(img: torch.Tensor, mask: torch.Tensor, negative:bool = False) -> torch.tensor:
@@ -108,8 +143,7 @@ class ReferenceDataset(Dataset):
         return img * mask
 
 
-    @staticmethod
-    def convert_to_tensor(img, mask:bool=False):
+    def convert_to_tensor(self, img, mask:bool=False):
         """
         Converts image or mask to tensor,
         flag means image and corresponding normalization
@@ -122,13 +156,31 @@ class ReferenceDataset(Dataset):
             img = img.to(torch.float32)
         
         #normalize image
-        img.div_(255.)
         if not mask:
-            mean = img.mean()
-            std = img.std()
-            img.div_(mean).sub_(std)
+            img.div_(255.).sub_(self.mean).div_(self.std)
         return img
 
+    @staticmethod
+    def convert_to_tensor(img, mask:bool=False):
+        """
+        Converts image or mask to tensor,
+        flag means image and corresponding normalization
+        """
+        mean = torch.tensor([0.48145466, 0.4578275,
+                                  0.40821073]).reshape(3, 1, 1)
+        std = torch.tensor([0.26862954, 0.26130258,
+                                 0.27577711]).reshape(3, 1, 1)
+        if mask:
+            img = torch.from_numpy(img)
+        else:
+            img = torch.from_numpy(img.transpose((2, 0, 1)))
+        if not torch.is_floating_point(img):
+            img = img.to(torch.float32)
+        
+        #normalize image
+        if not mask:
+            img.div_(255.).sub_(mean).div_(std)
+        return img
 
     def get_transform_mat(self, img_size, inverse=False):
         """
@@ -136,6 +188,27 @@ class ReferenceDataset(Dataset):
         """
         ori_h, ori_w = img_size
         inp_h, inp_w = self.input_size
+        scale = min(inp_h / ori_h, inp_w / ori_w)
+        new_h, new_w = ori_h * scale, ori_w * scale
+        bias_x, bias_y = (inp_w - new_w) / 2., (inp_h - new_h) / 2.
+
+        src = np.array([[0, 0], [ori_w, 0], [0, ori_h]], np.float32)
+        dst = np.array([[bias_x, bias_y], [new_w + bias_x, bias_y],
+                        [bias_x, new_h + bias_y]], np.float32)
+
+        mat = cv2.getAffineTransform(src, dst)
+        if inverse:
+            mat_inv = cv2.getAffineTransform(dst, src)
+            return mat, mat_inv
+        return mat, None
+
+    @staticmethod
+    def get_transform_mat(input_size, img_size, inverse=False):
+        """
+        Getting affine matrix transformation for downscaling image
+        """
+        ori_h, ori_w = img_size
+        inp_h, inp_w = input_size
         scale = min(inp_h / ori_h, inp_w / ori_w)
         new_h, new_w = ori_h * scale, ori_w * scale
         bias_x, bias_y = (inp_w - new_w) / 2., (inp_h - new_h) / 2.

@@ -1,0 +1,77 @@
+data:
+  train:
+    lmdb_path: datasets/lmdb/refcoco/train.lmdb
+    mode: train
+    image_size:
+      - 196
+      - 196
+
+  val:
+    lmdb_path: datasets/lmdb/refcoco/val.lmdb
+    mode: val
+    image_size:
+      - 196
+      - 196
+
+  test:
+    lmdb_path: datasets/lmdb/refcoco/test.lmdb
+    mode: test
+    image_size:
+      - 196
+      - 196
+
+  val_plus:
+    lmdb_path: datasets/lmdb/refcoco+/val.lmdb
+    mode: val
+    image_size:
+      - 196
+      - 196
+
+  train_plus:
+    lmdb_path: datasets/lmdb/refcoco+/train.lmdb
+    mode: train
+    image_size:
+      - 196
+      - 196
+
+train_settings:
+  batch_size: 48
+  scaler_step: 2
+  start_epoch: 0
+  epochs: 300
+  lr_decay: 0.5
+  milestones: [20, 50, 150, 250]
+  clip_grad: 2
+  checkpoint_step: 5
+
+optimizer_params:
+  lr: 0.0001
+  weight_decay: 0.001
+
+
+model:
+  # text_backbone: "sentence-transformers/multi-qa-distilbert-cos-v1"
+  # visual_backbone: facebook/maskformer-swin-large-coco
+
+  ImageEncoder:
+    image_size:
+      - 196
+      - 196
+    embedding_dim: 384
+    embedding_dim_internal: 384
+    conv_kernel_size: 7
+    conv_num_layers: 2
+
+  SiamEncoder:
+    embedding_dim: 384
+    mlp_ratio: 4
+    num_heads: 6
+    num_blocks: 16
+    projection_dropout: 0.15
+    attention_dropout: 0.15
+    feed_forward_dropout: 0.2
+
+  TextConvEncoder:
+    seq_len: 100
+    embedding_dim: 384
+    embedding_dim_internal: 300
