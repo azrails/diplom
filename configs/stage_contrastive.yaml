@@ -3,49 +3,56 @@ data:
     lmdb_path: datasets/lmdb/refcoco/train.lmdb
     mode: train
     image_size:
-      - 196
-      - 196
+      - 224
+      - 224
 
   val:
     lmdb_path: datasets/lmdb/refcoco/val.lmdb
     mode: val
     image_size:
-      - 196
-      - 196
+      - 224
+      - 224
 
   test:
-    lmdb_path: datasets/lmdb/refcoco/test.lmdb
+    lmdb_path: datasets/lmdb/refcoco/testA.lmdb
     mode: test
     image_size:
-      - 196
-      - 196
+      - 224
+      - 224
 
   val_plus:
     lmdb_path: datasets/lmdb/refcoco+/val.lmdb
     mode: val
     image_size:
-      - 196
-      - 196
+      - 224
+      - 224
 
   train_plus:
     lmdb_path: datasets/lmdb/refcoco+/train.lmdb
     mode: train
     image_size:
-      - 196
-      - 196
+      - 224
+      - 224
+
+  test:
+    lmdb_path: datasets/lmdb/refcoco+/testA.lmdb
+    mode: test
+    image_size:
+      - 224
+      - 224
 
 train_settings:
-  batch_size: 48
-  scaler_step: 2
+  batch_size: 45
+  scaler_step: 8
   start_epoch: 0
   epochs: 300
   lr_decay: 0.5
-  milestones: [20, 50, 150, 250]
+  milestones: [60, 150, 250]
   clip_grad: 2
   checkpoint_step: 5
 
 optimizer_params:
-  lr: 0.0001
+  lr: 5.0e-4
   weight_decay: 0.001
 
 
@@ -55,23 +62,23 @@ model:
 
   ImageEncoder:
     image_size:
-      - 196
-      - 196
-    embedding_dim: 384
-    embedding_dim_internal: 384
-    conv_kernel_size: 7
+      - 224
+      - 224
+    embedding_dim: 300
+    embedding_dim_internal: 170
+    conv_kernel_size: 6
     conv_num_layers: 2
 
   SiamEncoder:
-    embedding_dim: 384
+    embedding_dim: 300
     mlp_ratio: 4
-    num_heads: 6
-    num_blocks: 16
-    projection_dropout: 0.15
-    attention_dropout: 0.15
-    feed_forward_dropout: 0.2
+    num_heads: 5
+    num_blocks: 10
+    projection_dropout: 0.25
+    attention_dropout: 0.25
+    feed_forward_dropout: 0.25
 
   TextConvEncoder:
     seq_len: 100
-    embedding_dim: 384
+    embedding_dim: 300
     embedding_dim_internal: 300

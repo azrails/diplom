@@ -9,9 +9,9 @@ class ContrastiveLoss(nn.Module):
         self.eps = eps
 
     def forward(self, x, y, labels):
-        dist = nn.functional.pairwise_distance(x, y, keepdim=True)
-        mdist = torch.clamp(self.margin - dist, min=0)
-        loss = torch.mean(labels*torch.pow(dist + self.eps, 2) + (1 - labels)*torch.pow(mdist+self.eps, 2))
+        dist = nn.functional.pairwise_distance(x, y, keepdim=True).to(device=x.device)
+        mdist = torch.clamp(self.margin - dist, min=0).to(device=x.device)
+        loss = torch.mean(labels*torch.pow(dist + self.eps, 2) + (1 - labels)*torch.pow(mdist+self.eps, 2)).to(device=x.device)
         return loss
 
 
@@ -41,3 +41,48 @@ class ContrastiveSoftMax(nn.Module):
         images_loss = cross_entropy(logits.T, targets.T, reduction='none')
         loss =  (images_loss + texts_loss) / 2.0
         return loss.mean()
+
+
+class CLIPLoss(nn.Module):
+    def __init__(self, temperature=0.5):
+        super().__init__()
+        self.register_buffer("temperature", torch.tensor(temperature))
+
+    def forward(self, logits):
+        # Calculating the Loss
+        logits = logits * torch.exp(self.temperature) * self.temperature
+        targets = torch.arange(logits.size(1)).to(device=logits.device)
+        texts_loss = F.cross_entropy(logits, targets)
+        images_loss = F.cross_entropy(logits.T, targets.T)
+        loss =  (images_loss + texts_loss) / 2.0
+        return loss.mean()
+
+
+class NTXentLoss(nn.Module):
+    def __init__(self, batch_size, temperature=0.5):
+        super().__init__()
+        self.batch_size = batch_size
+        self.register_buffer("temperature", torch.tensor(temperature))
+        self.register_buffer("negatives_mask", (~torch.eye(batch_size * 2, batch_size * 2, dtype=bool)).float())
+            
+    def forward(self, emb_i, emb_j):
+        """
+        emb_i and emb_j are batches of embeddings, where corresponding indices are pairs
+        z_i, z_j as per SimCLR paper
+        """
+        z_i = F.normalize(emb_i, dim=1)
+        z_j = F.normalize(emb_j, dim=1)
+
+        representations = torch.cat([z_i, z_j], dim=0)
+        similarity_matrix = F.cosine_similarity(representations.unsqueeze(1), representations.unsqueeze(0), dim=2)
+        
+        sim_ij = torch.diag(similarity_matrix, self.batch_size)
+        sim_ji = torch.diag(similarity_matrix, -self.batch_size)
+        positives = torch.cat([sim_ij, sim_ji], dim=0)
+        
+        nominator = torch.exp(positives / self.temperature)
+        denominator = self.negatives_mask * torch.exp(similarity_matrix / self.temperature)
+    
+        loss_partial = -torch.log(nominator / torch.sum(denominator, dim=1))
+        loss = torch.sum(loss_partial) / (2 * self.batch_size)
+        return loss
